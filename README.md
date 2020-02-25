@@ -5,6 +5,8 @@ Simple Promise-based IndexedDB store based on [idb-keyval](https://github.com/ja
 ## Usage
 
 ```js
+//You can have multiple stores by providing a name
+//If no name is provided a "default" one is constructed
 let store = new GDB("storeName");
 
 //Set entry
