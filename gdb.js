@@ -1,76 +1,80 @@
 class GDB {
 
-	constructor(namespace = 'default') {
-		this.namespace = namespace;
-		this._store = "default";
+	constructor(name = "default") {
+		this.name = name;
+		this._storeName = "default";
+		this._readonly = "readonly";
+		this._readwrite = "readwrite";
 
 		this._db = new Promise((resolve, reject) => {
-			const openreq = indexedDB.open(namespace, 1);
-			openreq.onerror = () => reject(openreq.error);
-			openreq.onsuccess = () => resolve(openreq.result);
+			const openreq = indexedDB.open(name, 1);
+			openreq.onerror = _ => reject(openreq.error);
+			openreq.onsuccess = _ => resolve(openreq.result);
 
 			// First time setup: create an empty object store
-			openreq.onupgradeneeded = () => {
-				openreq.result.createObjectStore(this._store);
+			openreq.onupgradeneeded = _ => {
+				openreq.result.createObjectStore(this._storeName);
 			};
 		});
 	}
 
 	get(key) {
 		let req;
-		return this._trans(GDB.R, store => {
+		return this._transaction(this._readonly, store => {
 			req = store.get(key);
-		}).then(() => req.result);
+		}).then(_ => req.result);
 	}
 
 	set(key, value) {
-		return this._trans(GDB.W, store => {
+		return this._transaction(this._readwrite, store => {
 			store.put(value, key);
 		});
 	}
 
 	del(key) {
-		return this._trans(GDB.W, store => {
+		return this._transaction(this._readwrite, store => {
 			store.delete(key);
 		});
 	}
 
 	clear() {
-		return this._trans(GDB.W, store => {
+		return this._transaction(this._readwrite, store => {
 			store.clear();
 		});
 	}
 
-	keys() {
+	keys() { 
 		const keys = [];
-		return this._trans(GDB.R, store => {
-			// This would be store.getAllKeys(), but it isn't supported by Edge or Safari.
-			// And openKeyCursor isn't supported by Safari.
+		return this._transaction(this._readonly, store => {
 			(store.openKeyCursor || store.openCursor).call(store).onsuccess = function () {
-				if (!this.result)
-					return;
-				keys.push(this.result.key);
-				this.result.continue();
+				let result = this.result;
+				if (result) {
+					keys.push(result.key);
+					result.continue();
+				}
 			};
-		}).then(() => keys);
+		}).then(_ => keys);
 	}
 
 	all() {
+		let requests = {};
 		return this._db.then(db => new Promise((resolve, reject) => {
 			this.keys().then(keys => {
 
-				let trans = db.transaction(this._store, GDB.R);
-				let store = trans.objectStore(this._store);
-				let reqs = {};
+				let
+					storeName = this._storeName,
+					trans = db.transaction(storeName, this._readonly),
+					store = trans.objectStore(storeName)
+					;
 
 				trans.oncomplete = _ => {
-					Object.keys(reqs).forEach(k => reqs[k] = reqs[k].result);
-					resolve(reqs);
+					Object.keys(requests).forEach(k => requests[k] = requests[k].result);
+					resolve(requests);
 				};
 
-				trans.onabort = trans.onerror = () => reject(trans.error);
+				trans.onabort = trans.onerror = _ => reject(trans.error);
 
-				keys.forEach(key => reqs[key] = store.get(key));
+				keys.forEach(key => requests[key] = store.get(key));
 
 			});
 		}));
@@ -81,15 +85,13 @@ class GDB {
 	}
 
 	//Inits a transaction on the store
-	_trans(type, callback) {
+	_transaction(type, callback) {
 		return this._db.then(db => new Promise((resolve, reject) => {
-			const transaction = db.transaction(this._store, type);
-			transaction.oncomplete = () => resolve();
-			transaction.onabort = transaction.onerror = () => reject(transaction.error);
-			callback(transaction.objectStore(this._store));
+			const transaction = db.transaction(this._storeName, type);
+			transaction.oncomplete = _ => resolve();
+			transaction.onabort = transaction.onerror = _ => reject(transaction.error);
+			callback(transaction.objectStore(this._storeName));
 		}));
 	}
 
 };
-GDB.R = "readonly";
-GDB.W = "readwrite";

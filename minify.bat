@@ -1,0 +1,1 @@
+terser GDB.js -m --mangle-props regex=/^_/ -o GDB.min.js 

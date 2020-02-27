@@ -1,9 +1,7 @@
-# gdb
+# GDB
 
 Simple Promise-based IndexedDB store based on [idb-keyval](https://github.com/jakearchibald/idb-keyval) with an OOP approach.
 
-Provides a straight-forward way to persist complex data (e.g. entire objects or arrays) on the user's browser.
- 
 ## Usage
 
 ```js
@@ -41,5 +39,5 @@ store.clear();
 ### Via jsDelivr
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/grbolivar/gdb/gdb.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/grbolivar/GDB/GDB.min.js"></script>
 ```
